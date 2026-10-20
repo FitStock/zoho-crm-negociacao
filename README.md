@@ -46,3 +46,10 @@ O código original também pode ser consultado pela tag `before-contacts-migrati
 O formulário exibe os dados de origem que serão copiados ao criar: quantidade, preço, moeda e validade. A quantidade é arredondada para o inteiro mais próximo (12,4 → 12; 12,5 → 13), mantendo o campo Qtd inteiro. Os valores desejados permanecem opcionais e manuais. A função dedicada mantém a inversão de comprador/vendedor para oportunidades de compra e copia os dados do contato vendedor.
 
 A versão anterior do HTML está preservada na tag `before-opp-data-2026-10-20` e no commit `b702e461ccf9ac00bfb58c177938832b3e659c66`. Para reverter o comportamento completo, restaurar também a versão anterior da função no CRM a partir do backup privado da operação; reverter apenas o HTML não desfaz a cópia feita pelo servidor. O apontamento do widget continua o mesmo. Não excluir negociações já criadas.
+
+
+## Revisar valores antes de criar
+
+Quantidade, preço, moeda e validade agora vêm preenchidos da Opp e podem ser editados. A negociação usa os valores finais revisados, sem editar a Opp. Quantidade mantém arredondamento para inteiro. Mudar a moeda não converte o número do preço automaticamente. Os campos desejados e seletores de empresa/contato continuam separados.
+
+A tag `before-editable-opp-data-2026-10-20` preserva o HTML anterior à edição dos quatro campos, em `fbe68a95217c33e4cff180be1a24bcda54581f2a`. Para rollback completo, restaurar também a função anterior no Zoho a partir do backup privado dessa versão. Não excluir negociações já criadas.

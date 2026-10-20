@@ -149,8 +149,8 @@ test("C24 sucesso abre o deal_id retornado", async () => {
 const origin = { ...data, dados_oportunidade: { quantidade:12.5, qtd_arredondada:13, preco_unitario:7.25, moeda:'USD', validade_produto:'2027-05-31' }, referencia_origem:'synthetic-snapshot-v1' };
 test('Opp source summary shows rounding and desired fields stay manual', async()=>{
   const u=await ui(origin); await choose(u);
-  const text=u.doc.getElementById('dadosOpp').textContent;
-  assert.match(text,/12\.5/);assert.match(text,/13/);assert.match(text,/arredond/);assert.match(text,/USD/);assert.match(text,/2027-05-31/);
+  assert.equal(u.doc.getElementById('quantidadeOppInput').value,'12.5');
+  assert.match(u.doc.getElementById('qtdArredondada').textContent,/13/);assert.match(u.doc.getElementById('qtdArredondada').textContent,/arredond/);assert.equal(u.doc.getElementById('precoOppInput').value,'7.25');assert.equal(u.doc.getElementById('moedaOppSelect').value,'USD');assert.equal(u.doc.getElementById('validadeOppInput').value,'2027-05-31');
   assert.equal(u.doc.getElementById('qtdInput').value,'');assert.equal(u.doc.getElementById('precoInput').value,'');
   u.doc.getElementById('qtdInput').value='2.5';u.doc.getElementById('precoInput').value='9.75';
   u.doc.getElementById('empresaSelect').value='300';u.invoke('aoSelecionarEmpresa()');
@@ -160,4 +160,24 @@ test('Opp create sends context reference and preserves manual input', async()=>{
   const u=await ui(null,req=>({output:JSON.stringify(req.action?{status:'success',deal_id:'700'}:origin)}));await choose(u);
   u.doc.getElementById('qtdInput').value='2.5';u.doc.getElementById('precoInput').value='9.75';await u.invoke('confirmarCriacao()');
   assert.equal(u.calls[1].req.referencia_origem,'synthetic-snapshot-v1');assert.equal(u.calls[1].req.payload.Quantidade_Desejada,'2.5');assert.equal(u.calls[1].req.payload.Preco_Unitario_Desejado,'9.75');assert.equal(u.opened.length,1);
+});
+
+
+test('Four reviewed values are sent independently of desired values', async()=>{
+  const u=await ui(null,req=>({output:JSON.stringify(req.action?{status:'success',deal_id:'700'}:origin)}));await choose(u);
+  u.doc.getElementById('quantidadeOppInput').value='25.5';
+  u.doc.getElementById('precoOppInput').value='18.5';
+  u.doc.getElementById('moedaOppSelect').value='EUR';
+  u.doc.getElementById('validadeOppInput').value='2028-12-31';
+  u.invoke('atualizarCamposOpp()');
+  assert.match(u.doc.getElementById('qtdArredondada').textContent,/26/);
+  assert.match(u.doc.querySelector('label[for="precoOppInput"]').textContent,/EUR/);
+  assert.match(u.doc.getElementById('moedaAviso').textContent,/não.*convert/i);
+  await u.invoke('confirmarCriacao()');
+  assert.equal(u.calls[1].req.valores_negociacao.quantidade,'25.5');
+  assert.equal(u.calls[1].req.valores_negociacao.preco_unitario,'18.5');
+  assert.equal(u.calls[1].req.valores_negociacao.moeda,'EUR');
+  assert.equal(u.calls[1].req.valores_negociacao.validade_produto,'2028-12-31');
+  assert.equal(u.calls[1].req.payload.Quantidade_Desejada,'');
+  assert.equal(u.calls[1].req.payload.Preco_Unitario_Desejado,'');
 });

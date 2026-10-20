@@ -66,7 +66,34 @@
 
 <div id="avisos" role="status" style="font-size:12px; color:#92400e; margin-bottom:12px;"></div>
 
-<div id="dadosOpp" role="note" style="font-size:13px; line-height:1.6; margin-bottom:14px; white-space:pre-line;"></div>
+<div id="dadosOpp" role="note" style="font-size:13px; margin-bottom:12px;"></div>
+<div class="row">
+    <div class="form-group">
+        <label for="quantidadeOppInput">Quantidade</label>
+        <input type="number" step="any" min="0" id="quantidadeOppInput" oninput="atualizarCamposOpp()">
+        <small id="qtdArredondada" aria-live="polite"></small>
+    </div>
+    <div class="form-group">
+        <label for="precoOppInput">Preço</label>
+        <input type="number" step="0.01" min="0" id="precoOppInput">
+    </div>
+</div>
+<div class="row">
+    <div class="form-group">
+        <label for="moedaOppSelect">Moeda</label>
+        <select id="moedaOppSelect" onchange="atualizarCamposOpp()">
+            <option value="">Não informada</option>
+            <option value="BRL">BRL</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="validadeOppInput">Validade do produto</label>
+        <input type="date" id="validadeOppInput">
+    </div>
+</div>
+<div id="moedaAviso" style="font-size:12px; color:#475569; margin-bottom:14px;">Trocar a moeda não converte o preço automaticamente. Revise também o preço desejado, se preenchido.</div>
 
 <div class="row">
     <div class="form-group">
@@ -113,7 +140,22 @@ function setOptions(id, placeholder, items = []) {
     select.value = "";
 }
 
+function atualizarCamposOpp() {
+    const valor = document.getElementById("quantidadeOppInput").value;
+    const quantidade = Number(valor);
+    const preview = document.getElementById("qtdArredondada");
+    if (valor === "") preview.textContent = "Qtd não informada.";
+    else if (!Number.isFinite(quantidade) || quantidade < 0 || Math.round(quantidade) > 999999999) preview.textContent = "Informe uma quantidade válida, com Qtd até 999999999.";
+    else preview.textContent = `Qtd que será gravada: ${Math.round(quantidade)} (arredondamento para inteiro).`;
+    const moeda = document.getElementById("moedaOppSelect").value || "moeda não informada";
+    document.querySelector('label[for="precoOppInput"]').textContent = `Preço (${moeda})`;
+    document.querySelector('label[for="precoInput"]').textContent = `Preço Unitário Desejado (${moeda}, opcional)`;
+}
+
 function updateButton() {
+    for (const id of ["quantidadeOppInput", "precoOppInput", "moedaOppSelect", "validadeOppInput", "qtdInput", "precoInput"]) {
+        document.getElementById(id).disabled = loading || creating || completed || !contextData;
+    }
     document.getElementById("criarButton").disabled = loading || creating || completed || !contextData || !document.getElementById("empresaSelect").value;
     document.getElementById("empresaSelect").disabled = loading || creating || completed || !contextData;
     document.getElementById("contatoSelect").disabled = loading || creating || completed || !document.getElementById("empresaSelect").value;
@@ -155,18 +197,12 @@ async function carregarDados() {
         }
         contextData = output;
         const dados = output.dados_oportunidade || {};
-        const moeda = dados.moeda || "moeda não informada";
-        const linhas = ["Dados da Opp que serão copiados para a negociação:"];
-        if (dados.quantidade != null) {
-            const detalhe = dados.quantidade !== dados.qtd_arredondada ? " (arredondado para inteiro)" : "";
-            linhas.push(`Quantidade da Opp: ${dados.quantidade} → Qtd: ${dados.qtd_arredondada}${detalhe}`);
-        }
-        if (dados.preco_unitario != null) linhas.push(`Preço: ${dados.preco_unitario} ${moeda}`);
-        if (dados.moeda) linhas.push(`Moeda: ${dados.moeda}`);
-        if (dados.validade_produto) linhas.push(`Validade: ${dados.validade_produto}`);
-        linhas.push("Os valores desejados abaixo continuam opcionais e independentes dos dados da Opp.");
-        document.getElementById("dadosOpp").textContent = linhas.join("\n");
-        document.querySelector('label[for="precoInput"]').textContent = `Preço Unitário Desejado (${moeda}, opcional)`;
+        document.getElementById("dadosOpp").textContent = "Dados da Opp: revise os campos abaixo. Os valores finais serão copiados somente para esta negociação. Os campos desejados continuam separados.";
+        document.getElementById("quantidadeOppInput").value = dados.quantidade ?? "";
+        document.getElementById("precoOppInput").value = dados.preco_unitario ?? "";
+        document.getElementById("moedaOppSelect").value = dados.moeda ?? "";
+        document.getElementById("validadeOppInput").value = dados.validade_produto ?? "";
+        atualizarCamposOpp();
         if (output.contatos_sem_empresa > 0) {
             document.getElementById("avisos").textContent = `${output.contatos_sem_empresa} contato(s) associado(s) sem empresa vinculada. Vincule uma empresa no cadastro do contato para utilizá-lo nesta ação.`;
         }
@@ -202,6 +238,12 @@ async function confirmarCriacao() {
         setStatus("Selecione uma empresa e um contato elegíveis para esta oportunidade.", "error");
         return;
     }
+    const valoresNegociacao = {
+        quantidade: document.getElementById("quantidadeOppInput").value,
+        preco_unitario: document.getElementById("precoOppInput").value,
+        moeda: document.getElementById("moedaOppSelect").value,
+        validade_produto: document.getElementById("validadeOppInput").value
+    };
     creating = true;
     updateButton();
     setStatus("Criando negociação no CRM...", "loading");
@@ -226,7 +268,7 @@ async function confirmarCriacao() {
     };
     try {
         const response = await ZOHO.CRM.FUNCTIONS.execute(FUNCTION_API_NAME, {
-            arguments: JSON.stringify({ action: "criar_negocio", oppId: currentOppId, payload, referencia_origem: contextData.referencia_origem })
+            arguments: JSON.stringify({ action: "criar_negocio", oppId: currentOppId, payload, referencia_origem: contextData.referencia_origem, valores_negociacao: valoresNegociacao })
         });
         const output = parseZohoOutput(response);
         if (output?.status === "success" && output.deal_id) {
