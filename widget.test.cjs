@@ -145,3 +145,19 @@ test("C24 sucesso abre o deal_id retornado", async () => {
   assert.equal(u.opened[0].Entity, "Deals");
   assert.equal(u.opened[0].RecordID, "700");
 });
+// Synthetic contract: no CRM records or private Deluge code are included here.
+const origin = { ...data, dados_oportunidade: { quantidade:12.5, qtd_arredondada:13, preco_unitario:7.25, moeda:'USD', validade_produto:'2027-05-31' }, referencia_origem:'synthetic-snapshot-v1' };
+test('Opp source summary shows rounding and desired fields stay manual', async()=>{
+  const u=await ui(origin); await choose(u);
+  const text=u.doc.getElementById('dadosOpp').textContent;
+  assert.match(text,/12\.5/);assert.match(text,/13/);assert.match(text,/arredond/);assert.match(text,/USD/);assert.match(text,/2027-05-31/);
+  assert.equal(u.doc.getElementById('qtdInput').value,'');assert.equal(u.doc.getElementById('precoInput').value,'');
+  u.doc.getElementById('qtdInput').value='2.5';u.doc.getElementById('precoInput').value='9.75';
+  u.doc.getElementById('empresaSelect').value='300';u.invoke('aoSelecionarEmpresa()');
+  assert.equal(u.doc.getElementById('qtdInput').value,'2.5');assert.equal(u.doc.getElementById('precoInput').value,'9.75');
+});
+test('Opp create sends context reference and preserves manual input', async()=>{
+  const u=await ui(null,req=>({output:JSON.stringify(req.action?{status:'success',deal_id:'700'}:origin)}));await choose(u);
+  u.doc.getElementById('qtdInput').value='2.5';u.doc.getElementById('precoInput').value='9.75';await u.invoke('confirmarCriacao()');
+  assert.equal(u.calls[1].req.referencia_origem,'synthetic-snapshot-v1');assert.equal(u.calls[1].req.payload.Quantidade_Desejada,'2.5');assert.equal(u.calls[1].req.payload.Preco_Unitario_Desejado,'9.75');assert.equal(u.opened.length,1);
+});

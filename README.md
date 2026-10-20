@@ -40,3 +40,9 @@ https://abiezerlima.github.io/criar-negocio/index.html
 O widget original continua chamando `buscarempresaswidget`, preservada. Portanto, restaurar essa URL recupera também o comportamento anterior de Possíveis Buyers. A função nova pode permanecer sem consumidores; não é necessário excluir funções ou negociações.
 
 O código original também pode ser consultado pela tag `before-contacts-migration-2026-10-20`. A reversão de hospedagem não altera negociações já criadas.
+
+## Dados da oportunidade na negociação
+
+O formulário exibe os dados de origem que serão copiados ao criar: quantidade, preço, moeda e validade. A quantidade é arredondada para o inteiro mais próximo (12,4 → 12; 12,5 → 13), mantendo o campo Qtd inteiro. Os valores desejados permanecem opcionais e manuais. A função dedicada mantém a inversão de comprador/vendedor para oportunidades de compra e copia os dados do contato vendedor.
+
+A versão anterior do HTML está preservada na tag `before-opp-data-2026-10-20` e no commit `b702e461ccf9ac00bfb58c177938832b3e659c66`. Para reverter o comportamento completo, restaurar também a versão anterior da função no CRM a partir do backup privado da operação; reverter apenas o HTML não desfaz a cópia feita pelo servidor. O apontamento do widget continua o mesmo. Não excluir negociações já criadas.
