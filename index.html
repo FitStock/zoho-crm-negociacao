@@ -69,6 +69,8 @@
     </select>
 </div>
 
+<p style="font-size:12px;color:#475569;">Ao criar, a empresa compradora será marcada como <strong>Usa</strong> para este produto, com registro no histórico.</p>
+
 <div id="avisos" role="status" style="font-size:12px; color:#92400e; margin-bottom:12px;"></div>
 
 <div id="dadosOpp" role="note" style="font-size:13px; margin-bottom:12px;"></div>
@@ -113,6 +115,7 @@
 
 <button id="criarButton" disabled class="btn-submit" onclick="confirmarCriacao()">Criar Negociação</button>
 <div id="status" class="status"></div>
+<button id="abrirNegociacaoButton" type="button" hidden class="btn-submit" onclick="abrirNegociacaoCriada()">Abrir negociação criada</button>
 
 <script>
 const FUNCTION_API_NAME = "negociacaocontatoswidget";
@@ -175,6 +178,7 @@ let contextData = null;
 let loading = true;
 let creating = false;
 let completed = false;
+let lastCreatedDealId = null;
 
 function setStatus(msg, type) {
     const status = document.getElementById("status");
@@ -232,6 +236,8 @@ function parseZohoOutput(response) {
 async function carregarDados() {
     loading = true;
     completed = false;
+    lastCreatedDealId = null;
+    document.getElementById("abrirNegociacaoButton").hidden = true;
     contextData = null;
     document.getElementById("avisos").textContent = "";
     document.getElementById("dadosOpp").textContent = "";
@@ -337,8 +343,14 @@ async function confirmarCriacao() {
         const output = parseZohoOutput(response);
         if (output?.status === "success" && output.deal_id) {
             completed = true;
-            setStatus("Negociação criada com sucesso! Redirecionando...", "success");
-            ZOHO.CRM.UI.Record.open({ Entity: "Deals", RecordID: output.deal_id });
+            lastCreatedDealId = output.deal_id;
+            if (output.uso_produto_status === "pending" || output.projecao_status === "pending") {
+                setStatus(output.message || "Negociação criada; classificação de uso pendente. Não crie outra negociação para repetir.", "error");
+                document.getElementById("abrirNegociacaoButton").hidden = false;
+            } else {
+                setStatus(output.message || "Negociação criada com sucesso! Redirecionando...", "success");
+                ZOHO.CRM.UI.Record.open({ Entity: "Deals", RecordID: output.deal_id });
+            }
         } else {
             setStatus(output?.message || "Erro ao criar negociação. Confira o CRM antes de tentar novamente.", "error");
         }
@@ -348,6 +360,10 @@ async function confirmarCriacao() {
         creating = false;
         updateButton();
     }
+}
+
+function abrirNegociacaoCriada() {
+    if (completed && lastCreatedDealId) ZOHO.CRM.UI.Record.open({Entity: "Deals", RecordID: lastCreatedDealId});
 }
 
 function registrarZoho() {

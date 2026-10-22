@@ -183,3 +183,21 @@ test('Four reviewed values are sent independently of desired values', async()=>{
   assert.equal(u.calls[1].req.payload.Quantidade_Desejada,'');
   assert.equal(u.calls[1].req.payload.Preco_Unitario_Desejado,'');
 });
+
+test("Sucesso parcial não recria negociação e oferece abertura do registro existente", async () => {
+  let creates = 0;
+  const u = await ui(data, req => {
+    if (!req.action) return {output: JSON.stringify(data)};
+    creates++;
+    return {output: JSON.stringify({status:"success",deal_id:"700",uso_produto_status:"pending",message:"Negociação criada; uso pendente."})};
+  });
+  await choose(u);
+  await u.invoke("confirmarCriacao()");
+  assert.equal(u.doc.getElementById("criarButton").disabled, true);
+  assert.equal(u.doc.getElementById("abrirNegociacaoButton").hidden, false);
+  assert.equal(u.opened.length, 0);
+  await u.invoke("confirmarCriacao()");
+  assert.equal(creates, 1);
+  u.invoke("abrirNegociacaoCriada()");
+  assert.equal(u.opened[0].RecordID, "700");
+});

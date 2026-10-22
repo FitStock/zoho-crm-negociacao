@@ -60,3 +60,9 @@ A tag `before-editable-opp-data-2026-10-20` preserva o HTML anterior à edição
 O formulário pré-seleciona o usuário conectado ao Zoho CRM e permite escolher outro usuário ativo. O responsável é enviado em Owner; a função dedicada valida o usuário antes de gravar. Falha de leitura de usuários bloqueia a criação. Não muda o remetente do e-mail nem os responsáveis de registros existentes.
 
 Reversão da interface: restaurar os arquivos da tag before-owner-selector-2026-10-21 em um novo commit. O backend mantém compatibilidade com formulários anteriores. Backup privado da função e procedimento completo preservados no projeto administrativo FitStock.
+
+## Uso do produto ao criar negociação
+
+Após a criação confirmada, a função registra Usa para a empresa compradora e o produto da negociação, preservando o histórico. Em oportunidades de compra, a compradora é a empresa de origem. Isso funciona também sem contato comprador selecionado. Falha da classificação não desfaz nem duplica a negociação: o formulário informa a pendência e permite abrir o registro existente. Não há atualização retroativa de negociações anteriores.
+
+Reversão: tag before-auto-use-2026-10-21 e backup privado das duas funções Deluge, incluindo o motor de histórico. Restaurar frontend e função de negociação antes de considerar restaurar o motor; não apagar eventos ou classificações já registradas.
