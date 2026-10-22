@@ -17,6 +17,7 @@ async function ui(output, execute) {
     ZOHO: {
       embeddedApp: { on() {}, init() {} },
       CRM: {
+        ...require("./owner-fixture.cjs"),
         FUNCTIONS: {
           execute: async (name, data) => {
             const req = JSON.parse(data.arguments);
@@ -83,6 +84,7 @@ test("C8 carregamento bloqueia criacao", async () => {
   );
   assert.equal(u.doc.getElementById("criarButton").disabled, true);
   assert.match(u.doc.getElementById("status").textContent, /Carregando/);
+  await new Promise(resolve => setImmediate(resolve));
   release({ output: JSON.stringify(data) });
   await u.loading;
 });

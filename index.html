@@ -51,6 +51,11 @@
 <body>
 
 <div class="form-group">
+    <label for="responsavelSelect">Responsável</label>
+    <select id="responsavelSelect" disabled aria-describedby="responsavelStatus"></select>
+    <small id="responsavelStatus" role="status" style="display:block;margin-top:5px;color:#64748b;">Carregando responsáveis...</small>
+</div>
+<div class="form-group">
     <label for="empresaSelect">Empresa Parceira (dos Contacts associados)</label>
     <select id="empresaSelect" onchange="aoSelecionarEmpresa()">
         <option value="">Carregando empresas...</option>
@@ -111,6 +116,60 @@
 
 <script>
 const FUNCTION_API_NAME = "negociacaocontatoswidget";
+
+// Responsável: usuário conectado por padrão; somente usuários ativos do CRM.
+let responsaveisProntos = false;
+let responsavelGeracao = 0;
+let responsaveisAtivos = new Set();
+async function carregarResponsaveis() {
+    const generation = ++responsavelGeracao;
+    responsaveisProntos = false;
+    responsaveisAtivos = new Set();
+    const select = document.getElementById("responsavelSelect");
+    const status = document.getElementById("responsavelStatus");
+    select.disabled = true;
+    select.replaceChildren();
+    status.textContent = "Carregando responsáveis...";
+    try {
+        const currentResponse = await ZOHO.CRM.CONFIG.getCurrentUser();
+        const current = currentResponse?.users?.[0] || currentResponse;
+        if (!current?.id) throw Error("Usuário conectado não identificado.");
+        const users = new Map();
+        let complete = false;
+        for (let page = 1; page <= 10; page++) {
+            const response = await ZOHO.CRM.API.getAllUsers({Type: "ActiveUsers", page, per_page: 200});
+            if (!Array.isArray(response?.users) || response.code) throw Error("Lista de usuários indisponível.");
+            for (const user of response.users) {
+                if (user.status === "active" && /^\d+$/.test(String(user.id))) users.set(String(user.id), user);
+            }
+            if (response.info?.more_records === false || (response.info?.more_records !== true && response.users.length < 200)) { complete = true; break; }
+        }
+        if (!complete) throw Error("Lista de usuários incompleta.");
+        if (generation !== responsavelGeracao) return;
+        const currentId = String(current.id);
+        if (!users.has(currentId)) throw Error("Usuário conectado não está disponível como responsável ativo.");
+        for (const user of [...users.values()].sort((a,b) => String(a.full_name || a.last_name || a.id).localeCompare(String(b.full_name || b.last_name || b.id), "pt-BR"))) {
+            const option = document.createElement("option");
+            option.value = String(user.id);
+            option.textContent = (user.full_name || user.last_name || user.id) + (option.value === currentId ? " (você)" : "");
+            select.append(option);
+        }
+        responsaveisAtivos = new Set(users.keys());
+        select.value = currentId;
+        responsaveisProntos = true;
+        select.disabled = false;
+        status.textContent = "Pré-selecionado com seu usuário. Você pode escolher outro responsável.";
+    } catch (error) {
+        if (generation !== responsavelGeracao) return;
+        status.textContent = "Não foi possível carregar os responsáveis. Reabra o formulário para tentar novamente.";
+        select.replaceChildren();
+        select.disabled = true;
+    }
+}
+function responsavelSelecionado() {
+    const id = document.getElementById("responsavelSelect").value;
+    return responsaveisProntos && responsaveisAtivos.has(id) ? id : null;
+}
 let currentOppId = null;
 let contextData = null;
 let loading = true;
@@ -156,7 +215,8 @@ function updateButton() {
     for (const id of ["quantidadeOppInput", "precoOppInput", "moedaOppSelect", "validadeOppInput", "qtdInput", "precoInput"]) {
         document.getElementById(id).disabled = loading || creating || completed || !contextData;
     }
-    document.getElementById("criarButton").disabled = loading || creating || completed || !contextData || !document.getElementById("empresaSelect").value;
+    document.getElementById("responsavelSelect").disabled = loading || creating || completed || !responsaveisProntos;
+    document.getElementById("criarButton").disabled = loading || creating || completed || !responsaveisProntos || !contextData || !document.getElementById("empresaSelect").value;
     document.getElementById("empresaSelect").disabled = loading || creating || completed || !contextData;
     document.getElementById("contatoSelect").disabled = loading || creating || completed || !document.getElementById("empresaSelect").value;
 }
@@ -186,6 +246,7 @@ async function carregarDados() {
     }
     setStatus("Carregando Contacts associados à oportunidade...", "loading");
     try {
+        await carregarResponsaveis();
         const response = await ZOHO.CRM.FUNCTIONS.execute(FUNCTION_API_NAME, {
             arguments: JSON.stringify({ oppId: currentOppId })
         });
@@ -231,6 +292,8 @@ function aoSelecionarEmpresa() {
 
 async function confirmarCriacao() {
     if (loading || creating || completed || !contextData) return;
+    const responsavelId = responsavelSelecionado();
+    if (!responsavelId) { setStatus("Selecione um responsável ativo.", "error"); return; }
     const empresaId = document.getElementById("empresaSelect").value;
     const contatoId = document.getElementById("contatoSelect").value;
     const empresa = contextData.empresas.find(item => String(item.id) === empresaId);
@@ -257,6 +320,7 @@ async function confirmarCriacao() {
     const buyerContact = venda ? contatoId : contextData.contato_origem_id;
     const lookup = id => id ? { id: String(id) } : null;
     const payload = {
+        Owner: {id: responsavelId},
         Deal_Name: `[${contextData.produto_nome}] ${sellerName} x ${buyerName}`,
         Nome_Produto: lookup(contextData.produto_id),
         Account_Name: lookup(sellerId),

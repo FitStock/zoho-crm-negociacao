@@ -53,3 +53,10 @@ A versão anterior do HTML está preservada na tag `before-opp-data-2026-10-20` 
 Quantidade, preço, moeda e validade agora vêm preenchidos da Opp e podem ser editados. A negociação usa os valores finais revisados, sem editar a Opp. Quantidade mantém arredondamento para inteiro. Mudar a moeda não converte o número do preço automaticamente. Os campos desejados e seletores de empresa/contato continuam separados.
 
 A tag `before-editable-opp-data-2026-10-20` preserva o HTML anterior à edição dos quatro campos, em `fbe68a95217c33e4cff180be1a24bcda54581f2a`. Para rollback completo, restaurar também a função anterior no Zoho a partir do backup privado dessa versão. Não excluir negociações já criadas.
+
+
+## Responsável na criação
+
+O formulário pré-seleciona o usuário conectado ao Zoho CRM e permite escolher outro usuário ativo. O responsável é enviado em Owner; a função dedicada valida o usuário antes de gravar. Falha de leitura de usuários bloqueia a criação. Não muda o remetente do e-mail nem os responsáveis de registros existentes.
+
+Reversão da interface: restaurar os arquivos da tag before-owner-selector-2026-10-21 em um novo commit. O backend mantém compatibilidade com formulários anteriores. Backup privado da função e procedimento completo preservados no projeto administrativo FitStock.
